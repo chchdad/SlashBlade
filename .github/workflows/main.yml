@@ -1,4 +1,4 @@
-name: Build LMR Mod
+name: Build  Mod
 
 on: 
   workflow_dispatch:
