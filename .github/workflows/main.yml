@@ -29,5 +29,5 @@ jobs:
       - name: 📦 上传编译好的 Mod 本体
         uses: actions/upload-artifact@v4
         with:
-          name: compiled-lmr-mod
+          name: compiled-mod
           path: build/libs/*.jar
