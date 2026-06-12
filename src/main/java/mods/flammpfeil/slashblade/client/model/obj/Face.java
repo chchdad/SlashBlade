@@ -40,6 +40,63 @@ public class Face
     @SideOnly(Side.CLIENT)
     public void addFaceForRender(Tessellator tessellator, int glMode, float textureOffset)
     {
+        // ========================================================
+        // 如果是 Android 或 FCL 启动器，直接走此路径
+        // ========================================================
+        boolean isMobile = System.getProperty("os.version", "").toLowerCase().contains("android") 
+                        || System.getProperty("minecraft.launcher.brand", "").toLowerCase().contains("fold");
+                        
+        if (isMobile) {
+            // 直接拿到 Minecraft 正在使用的安全缓冲区，不新建！
+            net.minecraft.client.renderer.BufferBuilder safeWr = tessellator.getBuffer();
+            
+            float averageU = 0F;
+            float averageV = 0F;
+            int textureCoordinates_length = textureCoordinates != null ? textureCoordinates.length : 0;
+            if (textureCoordinates_length > 0) {
+                for (int i = 0; i < textureCoordinates_length; ++i) {
+                    averageU += textureCoordinates[i].u;
+                    averageV += textureCoordinates[i].v;
+                }
+                averageU = averageU / textureCoordinates_length;
+                averageV = averageV / textureCoordinates_length;
+            }
+
+            int r = defaultColor >> 16 & 255;
+            int g = defaultColor >> 8 & 255;
+            int b = defaultColor & 255;
+            int a = defaultColor >> 24 & 255;
+
+            float offsetU, offsetV;
+            mods.flammpfeil.slashblade.client.model.obj.Vertex normal; // 注意这里的 Vertex 类包名
+            
+            // 实时写入顶点，绝对不抽离 ByteBuffer
+            for (int i = 0; i < vertices.length; ++i) {
+                safeWr.pos(vertices[i].x, vertices[i].y, vertices[i].z);
+
+                if (textureCoordinates_length > 0) {
+                    offsetU = textureOffset;
+                    offsetV = textureOffset;
+                    if (textureCoordinates[i].u > averageU) offsetU = -offsetU;
+                    if (textureCoordinates[i].v > averageV) offsetV = -offsetV;
+                    safeWr.tex(textureCoordinates[i].u + offsetU, textureCoordinates[i].v + offsetV);
+                } else {
+                    safeWr.tex(0, 0);
+                }
+                safeWr.color(r, g, b, a);
+
+                if (vertexNormals != null) {
+                    normal = vertexNormals[i];
+                    safeWr.normal(normal.x * -1.05f, normal.y * -1.05f, normal.z * -1.05f);
+                } else {
+                    safeWr.normal(faceNormal.x, faceNormal.y, faceNormal.z);
+                }
+                safeWr.endVertex();
+            }
+            
+            // 手机端写入完毕后，直接 return，彻底避开下方原版的缓存逻辑！
+            return;
+        }
         BufferBuilder wr = tessellator.getBuffer();
         ByteBuffer cached = this.cache.get(Face.defaultColor);
         if (cached != null) {
